@@ -2,30 +2,46 @@
 #include <iostream>
 #include <cmath>
 
-int main() {
-	if ( !glfwInit() ) {
+// TO DO: Add variables here
+
+void initialize()
+{
+	// TO DO: Add Initialization code here
+	glfwSetWindowTitle("DNA");
+}
+
+void update()
+{
+	// TO DO: Add Update (logic) code here
+}
+
+void draw()
+{
+	// TO DO: Add Drawing code here
+	glClearColor(0,0,0,0);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void prepareGL()
+{
+	if (!glfwInit()) 
+	{
 		std::cerr << "Unable to initialize OpenGL!\n";
-		return -1;
+		exit(1);
 	}
 
-	if ( !glfwOpenWindow(640,480, //width and height of the screen
-				8,8,8,0, //Red, Green, Blue and Alpha bits
-				0,0, //Depth and Stencil bits
-				GLFW_WINDOW)) {
+	if (!glfwOpenWindow(640,480,	//width and height of the screen
+						8,8,8,0,	//Red, Green, Blue and Alpha bits
+						0,0,		//Depth and Stencil bits
+						GLFW_WINDOW)) 
+	{
 		std::cerr << "Unable to create OpenGL window.\n";
 		glfwTerminate();
-		return -1;
+		exit(1);
 	}
 
-	glfwSetWindowTitle("DNA");
-
-	// Ensure we can capture the escape key being pressed below
-	glfwEnable( GLFW_STICKY_KEYS );
-
 	// Enable vertical sync (on cards that support it)
-	glfwSwapInterval( 1 );
-
-	glClearColor(0,0,0,0);
+	glfwSwapInterval(1);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
@@ -35,23 +51,35 @@ int main() {
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+}
 
-	do {
+int main()
+{
+	// Prepare openGL.
+	prepareGL();
+
+	// Initialize.
+	initialize();
+
+	do 
+	{
+		// Respond to changes in window size.
 		int width, height;
-		// Get window size (may be different than the requested size)
-		//we do this every frame to accommodate window resizing.
 		glfwGetWindowSize( &width, &height );
 		glViewport( 0, 0, width, height );
 
-		glClear(GL_COLOR_BUFFER_BIT);
+		// Update.
+		update();
 
-		//TO DO: drawing code here
+		// Draw.
+		draw();
 
-		//VERY IMPORTANT: displays the buffer to the screen
+		// Show buffers to screen.
 		glfwSwapBuffers();
-	} while ( glfwGetKey(GLFW_KEY_ESC) != GLFW_PRESS &&
-			glfwGetWindowParam(GLFW_OPENED) );
+	}
+	while (glfwGetWindowParam(GLFW_OPENED));
 
+	// Exit.
 	glfwTerminate();
 	return 0;
 }
