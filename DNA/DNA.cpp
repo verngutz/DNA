@@ -1,4 +1,4 @@
-#include <GL/glfw.h>
+#include <gl\glfw.h>
 #include <iostream>
 #include <cmath>
 

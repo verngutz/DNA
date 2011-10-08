@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\cs177\03 - Drawing and Blending\glew.c">
+    <ClCompile Include="DNA.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DNA.cpp">
+    <ClCompile Include="glew.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
