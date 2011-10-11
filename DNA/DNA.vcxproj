@@ -14,6 +14,9 @@
     <ClCompile Include="DNA.cpp" />
     <ClCompile Include="glew.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="util.hpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FEFB05B3-B9C7-4B8A-B2FC-639A834A0C22}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
