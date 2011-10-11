@@ -25,8 +25,6 @@ enum
 	ATTRIB_NORMAL 
 };
 
-GLuint UNIFORM_viewProjMatrix, UNIFORM_modelMatrix, UNIFORM_normMatrix;
-
 void bindVertexArray(Vtx *vtx) 
 {
 	glVertexAttribPointer(ATTRIB_POS, 3, GL_FLOAT, GL_FALSE, sizeof(Vtx), &(vtx->x));

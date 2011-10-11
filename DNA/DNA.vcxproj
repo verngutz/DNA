@@ -15,6 +15,7 @@
     <ClCompile Include="glew.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="geometries.hpp" />
     <ClInclude Include="util.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

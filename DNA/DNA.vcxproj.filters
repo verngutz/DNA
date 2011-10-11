@@ -26,5 +26,8 @@
     <ClInclude Include="util.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="geometries.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
