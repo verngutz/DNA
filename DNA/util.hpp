@@ -163,11 +163,6 @@ void create_rotation_matrix_4x4(GLfloat x, GLfloat y, GLfloat z, GLfloat theta, 
 
 }
 
-/********************
- *
- * 4x4 OpenGL Matrix class
- *
- ********************/
 struct GLMatrix4 
 {
 	GLfloat mat[16];
@@ -290,93 +285,6 @@ struct GLMatrix4
 	}
 };
 
-/********************
- *
- * 3x3 OpenGL Matrix class
- *
- ********************/
-struct GLMatrix3 
-{
-	GLfloat mat[9];
-	
-	void setIdentity() 
-	{
-		mat[0] = 1, mat[3] = 0, mat[6] = 0;
-		mat[1] = 0, mat[4] = 1, mat[7] = 0;
-		mat[2] = 0, mat[5] = 0, mat[8] = 1;
-	}
-	
-	void setRotation(GLfloat x, GLfloat y, GLfloat theta) 
-	{
-		const GLfloat	c = cos(theta), 
-						s = sin(theta);
-
-		mat[0] = c, mat[3] = -s, mat[6] = -c * x + s * y + x;
-		mat[1] = s, mat[4] = c,  mat[7] = -s * x - c * y + y;
-		mat[2] = 0, mat[5] = 0,  mat[8] = 1;
-	}
-	
-	void setTranslation(GLfloat x, GLfloat y) 
-	{
-		mat[0] = 1, mat[3] = 0, mat[6] = x;
-		mat[1] = 0, mat[4] = 1, mat[7] = y;
-		mat[2] = 0, mat[5] = 0, mat[8] = 1;
-	}
-	
-	void translate(GLfloat x, GLfloat y) 
-	{
-		mat[6] += x;
-		mat[7] += y;
-	}
-	
-	void scale(GLfloat sx, GLfloat sy) 
-	{
-		mat[0] *= sx;
-		mat[3] *= sx;
-		mat[6] *= sx;
-		
-		mat[1] *= sy;
-		mat[4] *= sy;
-		mat[7] *= sy;
-	}
-	
-	void transpose() 
-	{
-		std::swap(mat[3],mat[1]);
-		std::swap(mat[6],mat[2]);
-		std::swap(mat[7],mat[5]);
-	}
-	
-	GLMatrix3& operator=(const GLMatrix3 &rhs) 
-	{
-		memcpy(mat, rhs.mat, sizeof(mat));
-		return *this;
-	}
-	
-	GLMatrix3 operator*(const GLMatrix3 &rhs) const 
-	{
-		GLMatrix3 ret;
-		for ( int i = 0; i < 9; ++i ) 
-		{
-			const int a = i % 3, b = (i / 3) * 3;
-			ret.mat[i] = mat[a]*rhs.mat[b] + mat[a+3]*rhs.mat[b+1] + mat[a+6]*rhs.mat[b+2];
-		}
-		return ret;
-	}
-	
-	GLMatrix3& operator*=(const GLMatrix3 &rhs) 
-	{
-		GLMatrix3 tmp;
-		for ( int i = 0; i < 9; ++i ) 
-		{
-			const int a = i % 3, b = (i / 3) * 3;
-			tmp.mat[i] = mat[a]*rhs.mat[b] + mat[a+3]*rhs.mat[b+1] + mat[a+6]*rhs.mat[b+2];
-		}
-		memcpy(mat, tmp.mat, sizeof(mat));
-		return *this;
-	}
-};
-
 void cross(const GLfloat *a, const GLfloat *b, GLfloat *output) 
 {
 	output[0] = a[1]*b[2] - a[2]*b[1];
@@ -410,7 +318,39 @@ void lookAt(GLfloat camX, GLfloat camY, GLfloat camZ,
 	output[13] = -camX * y[0] - camY * y[1] - camZ * y[2];
 	output[14] = -camX * z[0] - camY * z[1] - camZ * z[2];
 	output[15] = 1;
-	
+}
+
+GLuint unproject(const GLfloat winx, const GLfloat winy, const GLfloat *projection, int *viewport, float *rayEnd1, float *rayEnd2)
+{
+    float m[16];
+    float in1[4], in2[4], out1[4], out2[4];
+
+    if(glhInvertMatrixf2(projection, m) == 0)
+        return GL_FALSE;
+
+    in1[0] = in2[0] = (winx - (float)viewport[0]) / (float)viewport[2] * 2.0 - 1.0;
+    in1[1] = in2[1] = (winy - (float)viewport[1]) / (float)viewport[3] * 2.0 - 1.0;
+    in1[2] = -1;
+	in2[2] = 1;
+    in1[3] = in2[3] = 1;
+
+    multiply_matrix_4x4(m, in1, out1);
+	multiply_matrix_4x4(m, in2, out2);
+
+    if(out1[3] == 0 || out2[3] == 0)
+        return GL_FALSE;
+
+    out1[3] = 1.0 / out1[3];
+    rayEnd1[0] = out1[0] * out1[3];
+    rayEnd1[1] = out1[1] * out1[3];
+    rayEnd1[2] = out1[2] * out1[3];
+
+	out2[3] = 1.0 / out2[3];
+    rayEnd2[0] = out2[0] * out2[3];
+    rayEnd2[1] = out2[1] * out2[3];
+    rayEnd2[2] = out2[2] * out2[3];
+
+    return GL_TRUE;
 }
 
 class SceneNode 

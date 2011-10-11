@@ -52,7 +52,7 @@ void initialize()
 	lookAt(20, 20, 20, 0, 0, 0, 0, 0, 1, view.mat);
 
 	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
-	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
+	glUniform3f(UNIFORM_lightAmbient, 1, 1, 1);
 
 	PlaneNode plane(20, 20, 0xFFFFFF);
 	root.children.push_back(&plane);
@@ -129,6 +129,9 @@ void draw(unsigned long long time)
 {
 	// TO DO: Add Drawing code here
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	GLMatrix4 vp = projection * view;
+	glUniformMatrix4fv(UNIFORM_viewProjMatrix, 1, false, vp.mat);
+	root.draw(identityMat, identityMat);
 }
 
 #ifdef ENABLE
@@ -157,7 +160,6 @@ int main()
 
 		// Show buffers to screen.
 		glfwSwapBuffers();
-
 		time++;
 	}
 	while (glfwGetWindowParam(GLFW_OPENED));
