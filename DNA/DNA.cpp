@@ -1,5 +1,4 @@
 #include "util.hpp"
-#include "geometries.hpp"
 
 using namespace std;
 
@@ -11,51 +10,32 @@ GLuint	UNIFORM_viewProjMatrix,
 		UNIFORM_lightIntensity0,
 		UNIFORM_lightAmbient;
 
+#include "geometries.hpp"
+
 GLMatrix4 identityMat;
 GLMatrix4 projection, view;
 
 SceneNode root;
+PlaneNode* planeNode;
 
 void initialize()
 {
-	// TO DO: Add Initialization code here
-	if (!glfwInit()) 
-	{
-		cerr << "Unable to initialize OpenGL!\n";
-		exit(1);
-	}
-
-	if (!glfwOpenWindow(640,480,	//width and height of the screen
-						8,8,8,0,	//Red, Green, Blue and Alpha bits
-						0,0,		//Depth and Stencil bits
-						GLFW_WINDOW)) 
-	{
-		cerr << "Unable to create OpenGL window.\n";
-		glfwTerminate();
-		exit(1);
-	}
-
-	// Enable vertical sync (on cards that support it)
-	glfwSwapInterval(1);
-
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-	
-	glClearColor(0,0,0,0);
+	// TO DO: Add Initialization code here	
 	glfwSetWindowTitle("DNA");
+	glClearColor(0,0,0,0);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
 	identityMat.setIdentity();
-	projection.setPerspective(PI / 3, 1, 10, 1000);
-	lookAt(20, 20, 20, 0, 0, 0, 0, 0, 1, view.mat);
+	projection.setPerspective(PI / 3, 1, 0.1, 300);
+	lookAt(5, 5, 5, 0, 0, 0, 0, 0, 1, view.mat);
 
 	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
-	glUniform3f(UNIFORM_lightAmbient, 1, 1, 1);
+	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
 
-	PlaneNode plane(20, 20, 0xFFFFFF);
-	root.children.push_back(&plane);
+	planeNode = new PlaneNode(20, 20, 0xFFFFFFFF);
+	root.children.push_back(planeNode);
 }
 
 void loadContent()
@@ -64,18 +44,74 @@ void loadContent()
 	GLuint vtxShader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
 
-	if ( !loadShaderSource(vtxShader, "vertexShader.vsh") )  
+	const char *vertexShader[] = 
 	{
-		cerr << "Unable to load vertex shader.";
-		exit(1);
-	}
-	if ( !loadShaderSource(fragShader, "fragmentShader.fsh") ) 
+		"#version 120\n",
+
+		"uniform mat4 viewProjMatrix;\n",
+		"uniform mat4 modelMatrix;\n",
+		"uniform mat4 normMatrix;\n",
+
+		"attribute vec3 pos;\n",
+		"attribute vec3 normal;\n",
+		"attribute vec4 color;\n",
+
+		"varying vec4 out_color;\n",
+		"varying vec3 out_worldPos;\n",
+		"varying vec3 out_norm;\n",
+
+		"void main()\n",
+		"{\n",
+		"	vec4 p = modelMatrix * vec4(pos, 1);\n",
+		"	out_worldPos = p.xyz;\n",
+		"	out_norm = (normMatrix * vec4(normal, 0)).xyz;\n",
+		"	out_color = color;\n",
+
+		"	gl_Position = viewProjMatrix * p;\n",
+		"}\n"
+	};
+
+	const char *fragmentShader[] = 
 	{
-		cerr << "Unable to load fragment shader.";
-		exit(1);
-	}
+		"#version 120\n",
+
+		"varying vec4 out_color;\n",
+		"varying vec3 out_worldPos;\n",
+		"varying vec3 out_norm;\n",
+
+		"uniform vec3 lightPos0;\n",
+		"uniform vec3 lightIntensity0;\n",
+		"uniform vec3 lightAmbient;\n",
+
+		"void main()\n",
+		"{\n",
+		"	gl_FragColor.rgb = out_color.rgb * (lightIntensity0 * max(0,dot(normalize(lightPos0 - out_worldPos), normalize(out_norm))) + lightAmbient);\n",
+		"	gl_FragColor.a = out_color.a;\n",
+		"}\n"
+	};
+
+	glShaderSource(vtxShader, 18, vertexShader, NULL);
+	glShaderSource(fragShader, 12, fragmentShader, NULL);
+
+	glCompileShader(vtxShader);
+	glCompileShader(fragShader);
+
+	GLint logLength;
+	glGetShaderiv(vtxShader, GL_INFO_LOG_LENGTH, &logLength);
+	GLchar *log = new GLchar[logLength];
+	glGetShaderInfoLog(vtxShader, logLength, &logLength, log);
+	std::cout << "Vertex Shader Compile Log:\n" << log << std::endl;
+	delete [] log;
+
+	GLint logLength2;
+	glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &logLength2);
+	GLchar *log2 = new GLchar[logLength2];
+	glGetShaderInfoLog(fragShader, logLength, &logLength, log2);
+	std::cout << "Fragment Shader Compile Log:\n" << log2 << std::endl;
+	delete [] log2;
 
 	GLuint program = glCreateProgram();
+
 	glAttachShader(program, vtxShader);
 	glAttachShader(program, fragShader);
 	
@@ -85,14 +121,14 @@ void loadContent()
 	
 	glLinkProgram(program);
 	
-	GLint logLength;
-	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
-	if ( logLength > 0 )
+	GLint logLength3;
+	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength3);
+	if ( logLength3 > 0 )
 	{
-		GLchar *log = new GLchar[logLength];
-		glGetProgramInfoLog(program, logLength, &logLength, log);
+		GLchar *log3 = new GLchar[logLength3];
+		glGetProgramInfoLog(program, logLength, &logLength3, log3);
 		cout << "Program Compile Log:\n" << log << endl;
-		delete [] log;
+		delete [] log3;
 	}
 
 	glDeleteShader(fragShader);
@@ -122,7 +158,7 @@ void unloadContent()
 
 void update(unsigned long long time)
 {
-	// TO DO: Add Update (logic) code here
+	glUniform3f(UNIFORM_lightPos0, 0, 0, 10 * cos((long double)time / 1000));
 }
 
 void draw(unsigned long long time)
@@ -134,14 +170,46 @@ void draw(unsigned long long time)
 	root.draw(identityMat, identityMat);
 }
 
+void setup()
+{
+	if (!glfwInit()) 
+	{
+		cerr << "Unable to initialize OpenGL!\n";
+		exit(1);
+	}
+
+	if (!glfwOpenWindow(640,480,	//width and height of the screen
+						8,8,8,0,	//Red, Green, Blue and Alpha bits
+						24,0,		//Depth and Stencil bits
+						GLFW_WINDOW)) 
+	{
+		cerr << "Unable to create OpenGL window.\n";
+		glfwTerminate();
+		exit(1);
+	}
+
+	if ( glewInit() != GLEW_OK ) 
+	{
+		cerr << "Unable to hook OpenGL extensions!\n";
+		exit(1);
+	}
+
+	// Enable vertical sync (on cards that support it)
+	glfwSwapInterval(1);
+	glfwEnable(GLFW_STICKY_KEYS);
+}
+
 #ifdef ENABLE
 int main()
 {
-	// Initialize.
-	initialize();
+	// Set up OpenGL
+	setup();
 
 	// Load graphics resources
 	loadContent();
+	
+	// Initialize.
+	initialize();
 
 	unsigned long long time = 0;
 

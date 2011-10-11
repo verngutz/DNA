@@ -12,7 +12,8 @@ varying vec4 out_color;
 varying vec3 out_worldPos;
 varying vec3 out_norm;
 
-void main() {
+void main()
+{
 	vec4 p = modelMatrix * vec4(pos, 1);
 	out_worldPos = p.xyz;
 	out_norm = (normMatrix * vec4(normal, 0)).xyz;
