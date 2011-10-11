@@ -29,7 +29,7 @@ void initialize()
 
 	identityMat.setIdentity();
 	projection.setPerspective(PI / 3, 1, 0.1, 300);
-	lookAt(5, 5, 5, 0, 0, 0, 0, 0, 1, view.mat);
+	lookAt(20, 20, 20, 0, 0, 0, 0, 0, 1, view.mat);
 
 	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
 	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
@@ -158,7 +158,7 @@ void unloadContent()
 
 void update(unsigned long long time)
 {
-	glUniform3f(UNIFORM_lightPos0, 0, 0, 10 * cos((long double)time / 1000));
+	glUniform3f(UNIFORM_lightPos0, 0, 10 * sin((long double)time / 1000), 10 * cos((long double)time / 1000));
 }
 
 void draw(unsigned long long time)
