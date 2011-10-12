@@ -1,4 +1,7 @@
 #include "util.hpp"
+#ifndef WM_MOUSEWHEEL	// defines mousewheel, for Windows only
+#define WM_MOUSEWHEEL 0x020A
+#endif
 
 using namespace std;
 
@@ -11,6 +14,8 @@ GLuint	UNIFORM_viewProjMatrix,
 		UNIFORM_lightAmbient;
 
 GLuint x, y, nx, ny;
+
+GLfloat camX, camY, camZ, tX, tY, tZ;
 
 #include "geometries.hpp"
 
@@ -31,7 +36,7 @@ void initialize()
 
 	identityMat.setIdentity();
 	projection.setPerspective(PI / 3, 1, 0.1, 300);
-	lookAt(20, 20, 20, 0, 0, 0, 0, 0, 1, view.mat);
+	lookAt(camX, camY, camZ, tX, tY, tZ, 0, 0, 1, view.mat);
 
 	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
 	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
@@ -210,11 +215,27 @@ void update(unsigned long long time)
 				
 			}
 			
+			else if(msg.message==WM_MOUSEWHEEL)
+			{
+				zDelta = (short) HIWORD(msg.wParam);
+				if(zDelta > 0)
+				{
+					//roll direction 
+					//do whatever you want
+				}
+				if(zDelta < 0)
+				{
+					//roll other direction
+					//do whatever you want
+				}
+			}
 			
-			GLMatrix4 r;
+			
+			/*GLMatrix4 r;
 			r.setRotation(0,0,1, 0.1);
-			view = view * r;
+			view = view * r;*/
 		}
+	}
 		
 		GLMatrix4 vp = projection * view;
 		
