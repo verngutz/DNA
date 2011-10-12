@@ -1,7 +1,12 @@
 #include "util.hpp"
+<<<<<<< HEAD
 #ifndef WM_MOUSEWHEEL	// defines mousewheel, for Windows only
 #define WM_MOUSEWHEEL 0x020A
 #endif
+=======
+#include <time.h>
+#include <list>
+>>>>>>> fa8de017123561bf419f73b5d99a8ad0dba25881
 
 using namespace std;
 
@@ -22,8 +27,11 @@ GLfloat camX, camY, camZ, tX, tY, tZ;
 GLMatrix4 identityMat;
 GLMatrix4 projection, view;
 
+GLint oldLeftMouseState;
+
 SceneNode root;
-PlaneNode* planeNode;
+
+const GLfloat GRAVITY = -5;
 
 void initialize()
 {
@@ -41,8 +49,10 @@ void initialize()
 	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
 	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
 
-	planeNode = new PlaneNode(20, 20, 0xFFFFFFFF);
-	root.children.push_back(planeNode);
+	oldLeftMouseState = glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
+
+	PlaneNode planeNode(20, 20, 0xFFFFFFFF);
+	root.children.push_back(&planeNode);
 }
 
 void loadContent()
@@ -167,6 +177,7 @@ void update(unsigned long long time)
 {
 	glUniform3f(UNIFORM_lightPos0, 0, 10 * sin((long double)time / 1000), 10 * cos((long double)time / 1000));
 	
+<<<<<<< HEAD
 	do
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -260,6 +271,38 @@ void update(unsigned long long time)
 	
 	
 	
+=======
+	GLint newLeftMouseState = glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
+	if(oldLeftMouseState == GLFW_PRESS && newLeftMouseState == GLFW_RELEASE)
+	{
+		GLint x;
+		GLint y;
+
+		glfwGetMousePos(&x, &y);
+
+		GLint viewport[4];
+		glGetIntegerv(GL_VIEWPORT, viewport);
+
+		GLfloat mouseRayNear[3];
+		GLfloat mouseRayFar[3];
+
+		unproject(x, y, view.mat, projection.mat, viewport, mouseRayNear, mouseRayFar);
+
+		CubeNode cube(5);
+		cube.x[POS] = mouseRayNear[0];
+		cube.y[POS] = mouseRayNear[1];
+		cube.z[POS] = mouseRayNear[2];
+
+		cube.x[VEL] = mouseRayFar[0];
+		cube.y[VEL] = mouseRayFar[1];
+		cube.z[VEL] = mouseRayFar[2];
+
+		cube.x[ACC] = 0;
+		cube.y[ACC] = 0;
+		cube.z[ACC] = GRAVITY;
+	}
+	root.update(time);
+>>>>>>> fa8de017123561bf419f73b5d99a8ad0dba25881
 }
 
 void draw(unsigned long long time)
@@ -273,6 +316,8 @@ void draw(unsigned long long time)
 
 void setup()
 {
+	srand(time(NULL));
+
 	if (!glfwInit()) 
 	{
 		cerr << "Unable to initialize OpenGL!\n";
