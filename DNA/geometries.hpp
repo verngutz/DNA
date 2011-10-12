@@ -195,3 +195,65 @@ public:
 		drawChildren(t,nt);
 	}
 };
+
+class Cylinder
+{
+
+static const double MY_PI = 3.14159265358979323846264338327;
+
+public:
+Cylindernode(Glfloat rad, Glfloat height)
+{	
+	
+	
+	/*for(i=0; i<8; ++i)
+	{
+		vBotCircle[i].x = rad*cos(MY_PI*i/4);
+		vBotCircle[i].y = 0;
+		vBotCircle[i].z = rad*sin(MY_PI*i/4);
+	}*/
+	
+	for(i=0; i<32; ++i)
+	{
+		if(2%i==0)
+		{
+			vCylinder[i].x = rad*cos(MY_PI*i/16);
+			vCylinder[i].y = 0;	
+			vCylinder[i].z = rad*sin(MY_PI*i/16);
+		}
+		
+		else
+		{
+			vCylinder[i].x = rad*cos(MY_PI*i/16);
+			vCylinder[i].y = height;	
+			vCylinder[i].z = rad*sin(MY_PI*i/16);
+		}
+	}
+	
+	for(i=0; i<16; ++i)
+	{
+		if(2%i==0)
+		{
+			vTopCircle[i].x = rad*cos(MY_PI*i/8);
+			vTopCircle[i].y = height;	
+			vTopCircle[i].z = rad*sin(MY_PI*i/8);
+		}
+		
+		else
+		{
+			vTopCircle[i].x = 0;
+			vTopCircle[i].y = height;	
+			vTopCircle[i].z = 0;
+		}
+	}
+}
+
+virtual void draw()
+{
+		bindVertexArray(vTopCircle);
+		bindVertexArray(vCylinder);
+		
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		
+}
+};
