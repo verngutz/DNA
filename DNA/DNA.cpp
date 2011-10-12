@@ -10,6 +10,8 @@ GLuint	UNIFORM_viewProjMatrix,
 		UNIFORM_lightIntensity0,
 		UNIFORM_lightAmbient;
 
+GLuint x, y, nx, ny;
+
 #include "geometries.hpp"
 
 GLMatrix4 identityMat;
@@ -159,6 +161,84 @@ void unloadContent()
 void update(unsigned long long time)
 {
 	glUniform3f(UNIFORM_lightPos0, 0, 10 * sin((long double)time / 1000), 10 * cos((long double)time / 1000));
+	
+	do
+	{
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		if ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS )
+		{
+			// new cube code
+		} 
+		else if ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS )
+		{
+			// new vortex code
+		} 
+		else if ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS )
+		{
+			glfwGetMousePos(x, y);
+			
+			while ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) != GLFW_RELEASE)
+			{
+				glfwGetMousePos(nx, ny);
+				
+				if(nx-x > 0) // right
+				{
+					GLMatrix4 r;
+					r.setRotation(0,0,1, -0.1);
+					view = view * r;
+				}
+				else if(nx-x < 0) // left
+				{
+					GLMatrix4 r;
+					r.setRotation(0,0,1, 0.1);
+					view = view * r;
+				}
+				else if(ny-y > 0) //up
+				{
+					GLMatrix4 r;
+					r.setRotation(1,0,0, 0.1);
+					view = view * r;
+				}
+				else if(ny-y < 0) // down
+				{
+					GLMatrix4 r;
+					r.setRotation(1,0,0, -0.1);
+					view = view * r;
+				}
+					
+				
+			}
+			
+			
+			GLMatrix4 r;
+			r.setRotation(0,0,1, 0.1);
+			view = view * r;
+		}
+		
+		GLMatrix4 vp = projection * view;
+		
+		glUniformMatrix4fv(UNIFORM_viewProjMatrix, 1, false, vp.mat);
+		
+		lightAnimation.mult(lx, ly, lz, lw);
+		glUniform3f(UNIFORM_lightPos0, lx, ly, lz);
+		
+		glUniform3f(UNIFORM_lightAmbient, 0.2, 0.2, 0.2);
+		root.draw(identity, identity);
+		glUniform3f(UNIFORM_lightAmbient, 1, 1, 1);
+		GLMatrix4 lightPosTranslation;
+		lightPosTranslation.setIdentity();
+		lightPosTranslation.translate(lx, ly, lz);
+		lightPos.draw(lightPosTranslation, identity);
+		
+		glfwSwapBuffers();
+		t += 0.02f;
+	}
+	while ( glfwGetKey(GLFW_KEY_ESC) != GLFW_PRESS && glfwGetWindowParam(GLFW_OPENED) );
+	glfwTerminate();
+	
+	
+	
 }
 
 void draw(unsigned long long time)
