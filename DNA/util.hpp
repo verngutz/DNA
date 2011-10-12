@@ -2,7 +2,6 @@
 #include <iostream>
 #include <stdio.h>
 #include <cmath>
-#include <vector>
 #include <algorithm>
 #include <gl\glew.h>
 #include <gl\glfw.h>
@@ -320,15 +319,15 @@ void lookAt(GLfloat camX, GLfloat camY, GLfloat camZ,
 	output[15] = 1;
 }
 
-#define SWAP_ROWS_DOUBLE(a, b) { double *_tmp = a; (a)=(b); (b)=_tmp; }
-#define SWAP_ROWS_FLOAT(a, b) { float *_tmp = a; (a)=(b); (b)=_tmp; }
+#define SWAP_ROWS_DOUBLE(a, b) { GLdouble *_tmp = a; (a)=(b); (b)=_tmp; }
+#define SWAP_ROWS_FLOAT(a, b) { GLfloat *_tmp = a; (a)=(b); (b)=_tmp; }
 #define MAT(m, r, c) (m)[(c) * 4 + (r)]
 
 GLuint invert(const GLfloat *m, GLfloat *out)
 {
-	float wtmp[4][8];
-	float m0, m1, m2, m3, s;
-	float *r0, *r1, *r2, *r3;
+	GLfloat wtmp[4][8];
+	GLfloat m0, m1, m2, m3, s;
+	GLfloat *r0, *r1, *r2, *r3;
 	r0 = wtmp[0], r1 = wtmp[1], r2 = wtmp[2], r3 = wtmp[3];
 	r0[0] = MAT(m, 0, 0), r0[1] = MAT(m, 0, 1),
     r0[2] = MAT(m, 0, 2), r0[3] = MAT(m, 0, 3),
@@ -483,19 +482,19 @@ GLuint invert(const GLfloat *m, GLfloat *out)
 	return GL_TRUE;
 }
 
-GLuint unproject(const GLfloat winx, const GLfloat winy, const GLfloat *view, const GLfloat *projection, int *viewport, float *rayEnd1, float *rayEnd2)
+GLuint unproject(const GLint winx, const GLint winy, const GLfloat *view, const GLfloat *projection, GLint *viewport, GLfloat *rayEnd1, GLfloat *rayEnd2)
 {
-    float in1[4], in2[4], out1[4], out2[4];
+    GLfloat in1[4], in2[4], out1[4], out2[4];
 
-	float A[16];
+	GLfloat A[16];
 	multiply_matrix_4x4(projection, view, A);
 	
-    float m[16];
+    GLfloat m[16];
     if(invert(A, m) == GL_FALSE)
         return GL_FALSE;
 
-    in1[0] = in2[0] = (winx - (float)viewport[0]) / (float)viewport[2] * 2.0 - 1.0;
-    in1[1] = in2[1] = (winy - (float)viewport[1]) / (float)viewport[3] * 2.0 - 1.0;
+    in1[0] = in2[0] = (winx - (GLfloat)viewport[0]) / (GLfloat)viewport[2] * 2.0 - 1.0;
+    in1[1] = in2[1] = (winy - (GLfloat)viewport[1]) / (GLfloat)viewport[3] * 2.0 - 1.0;
     in1[2] = -1;
 	in2[2] = 1;
     in1[3] = in2[3] = 1;

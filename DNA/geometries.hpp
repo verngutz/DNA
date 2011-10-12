@@ -1,12 +1,31 @@
+#define ACC 0
+#define VEL 1
+#define POS 2
+
 class SceneNode 
 {
+protected:
+	bool alive;
+	GLfloat newX;
+	GLfloat newY;
+	GLfloat newZ;
+
 public:
+	GLfloat x[3];
+	GLfloat y[3];
+	GLfloat z[3];
+
 	GLMatrix4 transform, normTransform;
-	std::vector<SceneNode*> children;
-	SceneNode() 
+	list<SceneNode*> children;
+	
+	static bool is_dead (SceneNode * node) { return !node->alive; }
+
+	SceneNode(GLfloat x = 0, GLfloat y = 0, GLfloat z = 0, 
+		GLfloat velx = 0, GLfloat vely = 0, GLfloat velz = 0,
+		GLfloat accx = 0, GLfloat accy = 0, GLfloat accz = 0) 
 	{
-		transform.setIdentity();
 		normTransform.setIdentity();
+		alive = true;
 	}
 
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 
@@ -14,16 +33,24 @@ public:
 		drawChildren(parentTransform * transform, parentNormTransform * normTransform);
 	}
 	
-	virtual void update(double t) 
+	virtual void update(unsigned long long t) 
 	{
-		for ( size_t i = 0; i < children.size(); ++i )
-			children[i]->update(t);
+		GLfloat newX = x[ACC] * t * t + x[VEL] * t + x[POS];
+		GLfloat newY = y[ACC] * t * t + y[VEL] * t + y[POS];
+		GLfloat newZ = z[ACC] * t * t + z[VEL] * t + z[POS];
+
+		transform.setTranslation(newX, newY, newZ);
+
+		for(list<SceneNode*>::iterator i = children.begin(); i != children.end(); i++)
+			(*i)->update(t);
+
+		children.remove_if(is_dead);
 	}
 	
 	void drawChildren(const GLMatrix4 &t, const GLMatrix4 &nt) 
 	{
-		for ( size_t i = 0; i < children.size(); ++i )
-			children[i]->draw(t, nt);
+		for(list<SceneNode*>::iterator i = children.begin(); i != children.end(); i++)
+			(*i)->draw(t, nt);
 	}
 	
 	virtual ~SceneNode() { }
@@ -91,8 +118,13 @@ class CubeNode : public SceneNode
 {
 	Vtx vtx[6*6];
 public:
-	CubeNode(GLfloat size, GLuint cx, GLuint cy, GLuint cz, GLuint ncx, GLuint ncy, GLuint ncz) 
+	CubeNode(GLfloat size) 
 	{
+		GLuint colors[6];
+		for(int i = 0; i < 6; i++)
+		{
+			colors[i] = (std::rand() % 0x100000000) | 0xFF000000;
+		}
 		static const GLfloat permutation[][4][3] = 
 		{
 			{
@@ -123,11 +155,7 @@ public:
 			{0, 1, 0},
 			{0, -1, 0}
 		};
-		const GLuint colors[] = 
-		{
-			cz, ncz, cx, ncx, cy, ncy
-		};
-		
+
 		int index = 0;
 		size /= 2;
 		for ( size_t i = 0; i < 6; ++i ) 
@@ -183,6 +211,12 @@ public:
 		}
 	}
 	
+	virtual void update(unsigned long long t)
+	{
+		SceneNode::update(t);
+		alive = newZ < 0;
+	}
+
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 
 	{
 		const GLMatrix4 &t = parentTransform * transform,
@@ -196,64 +230,67 @@ public:
 	}
 };
 
-class Cylinder
+class Cylinder : public SceneNode
 {
-
-static const double MY_PI = 3.14159265358979323846264338327;
-
+	Vtx vTopCircle[16];
+	Vtx vCylinder[32];
 public:
-Cylindernode(Glfloat rad, Glfloat height)
-{	
-	
-	
-	/*for(i=0; i<8; ++i)
+	Cylinder(GLfloat rad, GLfloat height)
 	{
-		vBotCircle[i].x = rad*cos(MY_PI*i/4);
-		vBotCircle[i].y = 0;
-		vBotCircle[i].z = rad*sin(MY_PI*i/4);
-	}*/
-	
-	for(i=0; i<32; ++i)
-	{
-		if(2%i==0)
+		/*for(i=0; i<8; ++i)
 		{
-			vCylinder[i].x = rad*cos(MY_PI*i/16);
-			vCylinder[i].y = 0;	
-			vCylinder[i].z = rad*sin(MY_PI*i/16);
-		}
+			vBotCircle[i].x = rad*cos(MY_PI*i/4);
+			vBotCircle[i].y = 0;
+			vBotCircle[i].z = rad*sin(MY_PI*i/4);
+		}*/
+	
+		for(int i=0; i<32; ++i)
+		{
+			if(2%i==0)
+			{
+				vCylinder[i].x = rad*cos(PI*i/16);
+				vCylinder[i].y = 0;	
+				vCylinder[i].z = rad*sin(PI*i/16);
+			}
 		
-		else
+			else
+			{
+				vCylinder[i].x = rad*cos(PI*i/16);
+				vCylinder[i].y = height;	
+				vCylinder[i].z = rad*sin(PI*i/16);
+			}
+		}
+	
+		for(int i=0; i<16; ++i)
 		{
-			vCylinder[i].x = rad*cos(MY_PI*i/16);
-			vCylinder[i].y = height;	
-			vCylinder[i].z = rad*sin(MY_PI*i/16);
+			if(2%i==0)
+			{
+				vTopCircle[i].x = rad*cos(PI*i/8);
+				vTopCircle[i].y = height;	
+				vTopCircle[i].z = rad*sin(PI*i/8);
+			}
+		
+			else
+			{
+				vTopCircle[i].x = 0;
+				vTopCircle[i].y = height;	
+				vTopCircle[i].z = 0;
+			}
 		}
 	}
-	
-	for(i=0; i<16; ++i)
-	{
-		if(2%i==0)
-		{
-			vTopCircle[i].x = rad*cos(MY_PI*i/8);
-			vTopCircle[i].y = height;	
-			vTopCircle[i].z = rad*sin(MY_PI*i/8);
-		}
-		
-		else
-		{
-			vTopCircle[i].x = 0;
-			vTopCircle[i].y = height;	
-			vTopCircle[i].z = 0;
-		}
-	}
-}
 
-virtual void draw()
-{
-		bindVertexArray(vTopCircle);
+	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform)
+	{
+		const GLMatrix4 &t = parentTransform * transform,
+		&nt = parentNormTransform * normTransform;
 		bindVertexArray(vCylinder);
+		setTransform(t, nt);
 		
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		
-}
+		drawChildren(t,nt);
+		
+		//bindVertexArray(vTopCircle);
+		
+	}
 };
