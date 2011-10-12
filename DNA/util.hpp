@@ -484,7 +484,7 @@ GLuint invert(const GLfloat *m, GLfloat *out)
 
 GLuint unproject(const GLint winx, const GLint winy, const GLfloat *view, const GLfloat *projection, GLint *viewport, GLfloat *rayEnd1, GLfloat *rayEnd2)
 {
-    GLfloat in1[4], in2[4], out1[4], out2[4];
+    GLfloat in1[16], in2[16], out1[16], out2[16];
 
 	GLfloat A[16];
 	multiply_matrix_4x4(projection, view, A);
@@ -510,10 +510,11 @@ GLuint unproject(const GLint winx, const GLint winy, const GLfloat *view, const 
     rayEnd1[1] = out1[1] * out1[3];
     rayEnd1[2] = out1[2] * out1[3];
 
+	
 	out2[3] = 1.0 / out2[3];
     rayEnd2[0] = out2[0] * out2[3];
     rayEnd2[1] = out2[1] * out2[3];
     rayEnd2[2] = out2[2] * out2[3];
-
+	
     return GL_TRUE;
 }

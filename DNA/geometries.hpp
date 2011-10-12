@@ -2,10 +2,11 @@
 #define VEL 1
 #define POS 2
 
+#include <list>
+
 class SceneNode 
 {
 protected:
-	bool alive;
 	GLfloat newX;
 	GLfloat newY;
 	GLfloat newZ;
@@ -14,18 +15,37 @@ public:
 	GLfloat x[3];
 	GLfloat y[3];
 	GLfloat z[3];
+	
+	unsigned long long birthTime;
 
 	GLMatrix4 transform, normTransform;
 	list<SceneNode*> children;
+	list<SceneNode*>::iterator i;
 	
-	static bool is_dead (SceneNode * node) { return !node->alive; }
+	static bool is_dead (SceneNode * node) { return false; }
 
 	SceneNode(GLfloat x = 0, GLfloat y = 0, GLfloat z = 0, 
 		GLfloat velx = 0, GLfloat vely = 0, GLfloat velz = 0,
 		GLfloat accx = 0, GLfloat accy = 0, GLfloat accz = 0) 
 	{
+		newX = 0;
+		newY = 0;
+		newZ = 0;
+
+		this->x[POS] = x;
+		this->x[VEL] = velx;
+		this->x[ACC] = accx;
+
+		this->y[POS] = y;
+		this->y[VEL] = vely;
+		this->y[ACC] = accy;
+
+		this->z[POS] = z;
+		this->z[VEL] = velz;
+		this->z[ACC] = accz;
+
+		transform.setIdentity();
 		normTransform.setIdentity();
-		alive = true;
 	}
 
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 
@@ -33,15 +53,21 @@ public:
 		drawChildren(parentTransform * transform, parentNormTransform * normTransform);
 	}
 	
-	virtual void update(unsigned long long t) 
+	virtual void update(unsigned long long time)
 	{
-		GLfloat newX = x[ACC] * t * t + x[VEL] * t + x[POS];
-		GLfloat newY = y[ACC] * t * t + y[VEL] * t + y[POS];
-		GLfloat newZ = z[ACC] * t * t + z[VEL] * t + z[POS];
+		transform.translate(-newX, -newY, -newZ);
+		unsigned long long t = time - birthTime;
+		newX = (x[ACC] * t * t) + (x[VEL] * t) + x[POS];
+		newY = (y[ACC] * t * t) + (y[VEL] * t) + y[POS];
+		newZ = (z[ACC] * t * t) + (z[VEL] * t) + z[POS];
+		if(newZ < 0)
+		{
+			newZ = 0;
+		}
 
-		transform.setTranslation(newX, newY, newZ);
+		transform.translate(newX, newY, newZ);
 
-		for(list<SceneNode*>::iterator i = children.begin(); i != children.end(); i++)
+		for(i = children.begin(); i != children.end(); i++)
 			(*i)->update(t);
 
 		children.remove_if(is_dead);
@@ -49,7 +75,7 @@ public:
 	
 	void drawChildren(const GLMatrix4 &t, const GLMatrix4 &nt) 
 	{
-		for(list<SceneNode*>::iterator i = children.begin(); i != children.end(); i++)
+		for(i = children.begin(); i != children.end(); i++)
 			(*i)->draw(t, nt);
 	}
 	
@@ -99,6 +125,7 @@ public:
 		vertices[3].nx = 0;
 		vertices[3].ny = 0;
 		vertices[3].nz = 1;
+		transform.setIdentity();
 	}
 	
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormalTransform) 
@@ -107,7 +134,7 @@ public:
 		&nt = parentNormalTransform * normTransform;
 		bindVertexArray(vertices);
 		setTransform(t, nt);
-		
+
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		
 		drawChildren(t, nt);
@@ -123,7 +150,7 @@ public:
 		GLuint colors[6];
 		for(int i = 0; i < 6; i++)
 		{
-			colors[i] = (std::rand() % 0x100000000) | 0xFF000000;
+			colors[i] = (rand() % 0x100000000) | 0xFF000000;
 		}
 		static const GLfloat permutation[][4][3] = 
 		{
@@ -209,12 +236,6 @@ public:
 			vtx[index].nz = norms[i][2];
 			++index;
 		}
-	}
-	
-	virtual void update(unsigned long long t)
-	{
-		SceneNode::update(t);
-		alive = newZ < 0;
 	}
 
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 

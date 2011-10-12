@@ -1,6 +1,5 @@
 #include "util.hpp"
 #include <time.h>
-#include <list>
 
 using namespace std;
 
@@ -17,11 +16,11 @@ GLuint	UNIFORM_viewProjMatrix,
 GLMatrix4 identityMat;
 GLMatrix4 projection, view;
 
-GLint oldLeftMouseState;
-
 SceneNode root;
 
-const GLfloat GRAVITY = -5;
+const GLfloat GRAVITY = -0.00003;
+const int REPEAT_STALL = 500;
+int repeatCount = 0;
 
 void initialize()
 {
@@ -33,16 +32,15 @@ void initialize()
 	glEnable(GL_CULL_FACE);
 
 	identityMat.setIdentity();
-	projection.setPerspective(PI / 3, 1, 0.1, 300);
-	lookAt(20, 20, 20, 0, 0, 0, 0, 0, 1, view.mat);
+	projection.setPerspective(PI / 3, 0.5, 0.1, 300);
+	lookAt(1, 1, 5, 0.5, 0.5, 0, 0, 0, 1, view.mat);
 
-	glUniform3f(UNIFORM_lightIntensity0, 1, 1, 1);
+	glUniform3f(UNIFORM_lightIntensity0, 0.8, 0.8, 0.8);
 	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
+	glUniform3f(UNIFORM_lightPos0, 0, 0, 10);
 
-	oldLeftMouseState = glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
-
-	PlaneNode planeNode(20, 20, 0xFFFFFFFF);
-	root.children.push_back(&planeNode);
+	PlaneNode* planeNode = new PlaneNode(20, 20, 0xFFFFFFFF);
+	root.children.push_back(planeNode);
 }
 
 void loadContent()
@@ -162,40 +160,51 @@ void unloadContent()
 {
 	// TO DO: Release used graphics resources here
 }
-
 void update(unsigned long long time)
 {
-	glUniform3f(UNIFORM_lightPos0, 0, 10 * sin((long double)time / 1000), 10 * cos((long double)time / 1000));
-	
-	GLint newLeftMouseState = glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
-	if(oldLeftMouseState == GLFW_PRESS && newLeftMouseState == GLFW_RELEASE)
+	if(glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 	{
-		GLint x;
-		GLint y;
+		if(repeatCount++ % REPEAT_STALL == 0)
+		{
+			cout << "newCube" << endl;
+			GLint x;
+			GLint y;
 
-		glfwGetMousePos(&x, &y);
+			glfwGetMousePos(&x, &y);
 
-		GLint viewport[4];
-		glGetIntegerv(GL_VIEWPORT, viewport);
+			GLint viewport[4];
+			glGetIntegerv(GL_VIEWPORT, viewport);
 
-		GLfloat mouseRayNear[3];
-		GLfloat mouseRayFar[3];
+			GLfloat mouseRayNear[3];
+			GLfloat mouseRayFar[3];
 
-		unproject(x, y, view.mat, projection.mat, viewport, mouseRayNear, mouseRayFar);
+			if(unproject(x, -y, view.mat, projection.mat, viewport, mouseRayNear, mouseRayFar))
+			{
+				CubeNode* cube = new CubeNode(2);
+				cube->birthTime = time;
 
-		CubeNode cube(5);
-		cube.x[POS] = mouseRayNear[0];
-		cube.y[POS] = mouseRayNear[1];
-		cube.z[POS] = mouseRayNear[2];
+				GLfloat t = (20 - mouseRayNear[2]) / (mouseRayFar[2] - mouseRayNear[2]);
+				cube->x[POS] = (mouseRayNear[0] + t * (mouseRayFar[0] - mouseRayNear[0]));
+				cube->y[POS] = (mouseRayNear[1] + t * (mouseRayFar[1] - mouseRayNear[1]));
+				cube->z[POS] = 20;
 
-		cube.x[VEL] = mouseRayFar[0];
-		cube.y[VEL] = mouseRayFar[1];
-		cube.z[VEL] = mouseRayFar[2];
+				cube->x[VEL] = 0;
+				cube->y[VEL] = 0;
+				cube->z[VEL] = 0;
 
-		cube.x[ACC] = 0;
-		cube.y[ACC] = 0;
-		cube.z[ACC] = GRAVITY;
+				cube->x[ACC] = 0;
+				cube->y[ACC] = 0;
+				cube->z[ACC] = GRAVITY;
+
+				root.children.push_back(cube);
+			}
+		}
 	}
+	else
+	{
+		repeatCount = 0;
+	}
+
 	root.update(time);
 }
 
