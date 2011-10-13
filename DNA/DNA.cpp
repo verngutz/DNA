@@ -1,5 +1,6 @@
 #include "util.hpp"
 #include <time.h>
+#include <list>
 
 using namespace std;
 
@@ -11,16 +12,25 @@ GLuint	UNIFORM_viewProjMatrix,
 		UNIFORM_lightIntensity0,
 		UNIFORM_lightAmbient;
 
+GLint x, y, nx, ny;
+
+GLfloat camX = 12, camY = 12, camZ = 5, tX = 0, tY = 0, tZ = 0;
+GLfloat zoomVal = PI / 3;
+GLint oldMouseWheel = 0;
+GLfloat aspect = 0.9;
+
+bool tornado = true;
+
+const GLfloat GRAVITY = 0.00003;
 #include "geometries.hpp"
 
 GLMatrix4 identityMat;
 GLMatrix4 projection, view;
 
 SceneNode root;
-
-const GLfloat GRAVITY = -0.00003;
-const int REPEAT_STALL = 500;
+const int REPEAT_STALL = 10;
 int repeatCount = 0;
+bool newlyPressed = true;
 
 void initialize()
 {
@@ -29,19 +39,29 @@ void initialize()
 	glClearColor(0,0,0,0);
 
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 
 	identityMat.setIdentity();
-	projection.setPerspective(PI / 3, 0.5, 0.1, 300);
-	lookAt(1, 1, 5, 0.5, 0.5, 0, 0, 0, 1, view.mat);
 
-	glUniform3f(UNIFORM_lightIntensity0, 0.8, 0.8, 0.8);
-	glUniform3f(UNIFORM_lightAmbient, 0.15, 0.15, 0.15);
-	glUniform3f(UNIFORM_lightPos0, 0, 0, 10);
+	projection.setPerspective(zoomVal, aspect, 0.001, 50);
+	lookAt(camX, camY, camZ, tX, tY, tZ, 0, 0, 1, view.mat);
 
-	PlaneNode* planeNode = new PlaneNode(20, 20, 0xFFFFFFFF);
+	glUniform3f(UNIFORM_lightIntensity0, 2, 2, 2);
+	glUniform3f(UNIFORM_lightAmbient, 0.05, 0.05, 0.05);
+	glUniform3f(UNIFORM_lightPos0, 0, 0, 8);
+
+	PlaneNode* planeNode = new PlaneNode(50, 50, 0xFFFFFFFF);
 	root.children.push_back(planeNode);
+
+	for(int i = 0; i < 10; i++)
+	{
+		PyramidNode* pyra = new PyramidNode(2, 3, rand() % 2 + 3, rand() % 0x100000000 | 0xFF000000, rand() % 0x100000000 | 0xFF000000);
+		pyra->transform.translate(rand() % 16 - 8, rand() % 16 - 8, 0);
+		root.children.push_back(pyra);
+	}
 }
+
+
 
 void loadContent()
 {
@@ -162,14 +182,11 @@ void unloadContent()
 }
 void update(unsigned long long time)
 {
-	if(glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	tornado = glfwGetKey('D');
+	if ( glfwGetKey('A') == GLFW_PRESS )
 	{
 		if(repeatCount++ % REPEAT_STALL == 0)
 		{
-			cout << "newCube" << endl;
-			GLint x;
-			GLint y;
-
 			glfwGetMousePos(&x, &y);
 
 			GLint viewport[4];
@@ -178,33 +195,69 @@ void update(unsigned long long time)
 			GLfloat mouseRayNear[3];
 			GLfloat mouseRayFar[3];
 
-			if(unproject(x, -y, view.mat, projection.mat, viewport, mouseRayNear, mouseRayFar))
-			{
-				CubeNode* cube = new CubeNode(2);
+			
+			//if(unproject(x, -y, view.mat, projection.mat, viewport, mouseRayNear, mouseRayFar))
+			//{
+				CubeNode* cube = new CubeNode(0.5, 0xCCCCCCCC);
 				cube->birthTime = time;
 
-				GLfloat t = (20 - mouseRayNear[2]) / (mouseRayFar[2] - mouseRayNear[2]);
-				cube->x[POS] = (mouseRayNear[0] + t * (mouseRayFar[0] - mouseRayNear[0]));
-				cube->y[POS] = (mouseRayNear[1] + t * (mouseRayFar[1] - mouseRayNear[1]));
-				cube->z[POS] = 20;
+				//GLfloat t = (camZ - 2 - mouseRayNear[2]) / (mouseRayFar[2] - mouseRayNear[2]);
+				float theta = rand();
+				cube->x[POS] = rand() % 4 * cos(theta); //(mouseRayNear[0] + t * (mouseRayFar[0] - mouseRayNear[0]));
+				cube->y[POS] = rand() % 4 * sin(theta); //(mouseRayNear[1] + t * (mouseRayFar[1] - mouseRayNear[1]));
+				cube->z[POS] = rand() % 20;
 
-				cube->x[VEL] = 0;
-				cube->y[VEL] = 0;
-				cube->z[VEL] = 0;
+				cube->x[VEL] = rand() % 100 * 0.00001 - 0.0005;
+				cube->y[VEL] = rand() % 100 * 0.00001 - 0.0005;
+				cube->z[VEL] = rand() % 100 * 0.00001 - 0.0005;
 
 				cube->x[ACC] = 0;
 				cube->y[ACC] = 0;
-				cube->z[ACC] = GRAVITY;
+				cube->z[ACC] = -GRAVITY;
 
 				root.children.push_back(cube);
-			}
+			//}
+		}
+	} 
+	if ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS )
+	{
+		if(newlyPressed)
+		{
+			glfwGetMousePos(&x, &y);
+			newlyPressed = false;
+		}
+
+		glfwGetMousePos(&nx, &ny);
+				
+		if(nx-x > 0) // right
+		{
+			GLMatrix4 r;
+			r.setRotation(0,0,1, -0.001);
+			view = view * r;
+		}
+		else if(nx-x < 0) // left
+		{
+			GLMatrix4 r;
+			r.setRotation(0,0,1, 0.001);
+			view = view * r;
 		}
 	}
-	else
+	else if ( glfwGetMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_RELEASE )
 	{
-		repeatCount = 0;
+		newlyPressed = true;
 	}
-
+		
+	zoomVal -= (glfwGetMouseWheel() - oldMouseWheel)/12.0;
+	if(zoomVal < PI / 10)
+	{
+		zoomVal = PI / 10;
+	}
+	else if(zoomVal > PI/2)
+	{
+		zoomVal = PI/2;
+	}
+	projection.setPerspective(zoomVal, aspect, 0.001, 50);
+	oldMouseWheel = glfwGetMouseWheel();
 	root.update(time);
 }
 

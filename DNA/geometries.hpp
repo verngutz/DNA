@@ -3,6 +3,7 @@
 #define POS 2
 
 #include <list>
+#include <vector>
 
 class SceneNode 
 {
@@ -10,6 +11,7 @@ protected:
 	GLfloat newX;
 	GLfloat newY;
 	GLfloat newZ;
+	bool alive;
 
 public:
 	GLfloat x[3];
@@ -22,7 +24,7 @@ public:
 	list<SceneNode*> children;
 	list<SceneNode*>::iterator i;
 	
-	static bool is_dead (SceneNode * node) { return false; }
+	static bool is_dead (SceneNode * node) { return !node->alive; }
 
 	SceneNode(GLfloat x = 0, GLfloat y = 0, GLfloat z = 0, 
 		GLfloat velx = 0, GLfloat vely = 0, GLfloat velz = 0,
@@ -46,6 +48,7 @@ public:
 
 		transform.setIdentity();
 		normTransform.setIdentity();
+		alive = true;
 	}
 
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 
@@ -56,19 +59,24 @@ public:
 	virtual void update(unsigned long long time)
 	{
 		transform.translate(-newX, -newY, -newZ);
-		unsigned long long t = time - birthTime;
-		newX = (x[ACC] * t * t) + (x[VEL] * t) + x[POS];
-		newY = (y[ACC] * t * t) + (y[VEL] * t) + y[POS];
-		newZ = (z[ACC] * t * t) + (z[VEL] * t) + z[POS];
-		if(newZ < 0)
-		{
-			newZ = 0;
-		}
+
+		x[VEL] += x[ACC];
+		y[VEL] += y[ACC];
+		z[VEL] += z[ACC];
+
+		x[POS] += x[VEL];
+		y[POS] += y[VEL];
+		z[POS] += z[VEL];
+		if(z[POS] < 0) z[POS] = 0;
+
+		newX = x[POS];
+		newY = y[POS];
+		newZ = z[POS];
 
 		transform.translate(newX, newY, newZ);
 
 		for(i = children.begin(); i != children.end(); i++)
-			(*i)->update(t);
+			(*i)->update(time);
 
 		children.remove_if(is_dead);
 	}
@@ -126,10 +134,21 @@ public:
 		vertices[3].ny = 0;
 		vertices[3].nz = 1;
 		transform.setIdentity();
+		alive = true;
 	}
 	
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormalTransform) 
 	{
+		if(tornado)
+		{
+			for(int i = 0; i < 4; i++)
+				vertices[i].color = 0xFF0033CC;
+		}
+		else
+		{
+			for(int i = 0; i < 4; i++)
+				vertices[i].color = 0xFFCC3300;
+		}
 		const GLMatrix4 &t = parentTransform * transform,
 		&nt = parentNormalTransform * normTransform;
 		bindVertexArray(vertices);
@@ -143,14 +162,25 @@ public:
 
 class CubeNode : public SceneNode 
 {
+	GLMatrix4 rot;
 	Vtx vtx[6*6];
 public:
-	CubeNode(GLfloat size) 
+	CubeNode(GLfloat size, int color) 
 	{
 		GLuint colors[6];
-		for(int i = 0; i < 6; i++)
+		if(color == 0)
 		{
-			colors[i] = (rand() % 0x100000000) | 0xFF000000;
+			for(int i = 0; i < 6; i++)
+			{
+				colors[i] = (rand() % 0x100000000) | 0xFF000000;
+			}
+		}
+		else
+		{
+			for(int i = 0; i < 6; i++)
+			{
+				colors[i] = color;
+			}
 		}
 		static const GLfloat permutation[][4][3] = 
 		{
@@ -236,6 +266,28 @@ public:
 			vtx[index].nz = norms[i][2];
 			++index;
 		}
+
+		rot.setRotation(rand(), rand(), rand(), 0.005);
+	}
+
+	virtual void update(unsigned long long time)
+	{
+		SceneNode::update(time);
+		alive = z[POS] > 0;
+		if(tornado)
+		{
+			x[ACC] = (log(z[POS])/100 * (sin((float)(time - birthTime)/10.0) - y[POS]/10)) / 50;
+			y[ACC] = -(log(z[POS])/100 * (cos((float)(time - birthTime)/10.0) - x[POS]/10)) / 50;
+			z[ACC] = 0.00001;
+		}
+		else
+		{
+			x[ACC] = 0;
+			y[ACC] = 0;
+			z[ACC] = -GRAVITY;
+		}
+
+		transform = transform * rot;
 	}
 
 	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) 
@@ -248,6 +300,74 @@ public:
 		glDrawArrays(GL_TRIANGLES, 0, sizeof(vtx)/sizeof(Vtx));
 		
 		drawChildren(t,nt);
+	}
+};
+
+class PyramidNode : public SceneNode {
+	vector<Vtx> vertices;
+	GLfloat height;
+public:
+	PyramidNode(GLfloat radius, GLfloat height, GLuint sides, GLuint tipColor, GLuint color) : vertices(2*(2 + max(sides,3u))), height(height) {
+		sides = max(sides,3u);
+		vertices[0].x = vertices[0].y = 0;
+		vertices[0].z = height;
+		vertices[0].color = tipColor;
+		vertices[0].nx = 0;
+		vertices[0].ny = 0;
+		vertices[0].nz = 1;
+		
+		const GLuint skip = vertices.size()/2;
+		
+		vertices[skip] = vertices.front();
+		vertices[skip].color = color;
+		vertices[skip].z = 0;
+		vertices[skip].nz = -1;
+		//||perp(<radius, 0, 0> - <0, 0, height>)|| = ||perp(radius, 0, -height)|| = <height, 0, radius>/sqrt(height^2 + radius^2)
+		const double normFactor = 1.0/sqrt(height*height + radius*radius);
+		const double baseNormX = height * normFactor, baseNormZ = radius * normFactor;
+		for ( size_t i = 0; i < sides; ++i ) {
+			const double angle = 2.0 * i * PI/(double)sides;
+			const double c = cos(angle), s = sin(angle);
+			vertices[i + 1].x = radius * c;
+			vertices[i + 1].y = radius * s;
+			vertices[i + 1].z = 0;
+			vertices[i + 1].color = color;
+			//Rz(||<height, 0, radius>||) 
+			vertices[i + 1].nx = c * baseNormX;
+			vertices[i + 1].ny = s * baseNormX;
+			vertices[i + 1].nz = baseNormZ;
+			
+			vertices[skip+i+1] = vertices[i+1];
+			vertices[skip+i+1].y *= -1;
+			vertices[skip+i+1].nx = 0;
+			vertices[skip+i+1].ny = 0;
+			vertices[skip+i+1].nz = -1;
+		}
+		vertices[skip-1].x = radius;
+		vertices[skip-1].y = 0;
+		vertices[skip-1].z = 0;
+		vertices[skip-1].nx = baseNormX;
+		vertices[skip-1].ny = 0;
+		vertices[skip-1].nz = baseNormZ;
+		vertices[skip-1].color = color;
+		
+		vertices.back() = vertices[skip-1];
+		vertices.back().nx = 0;
+		vertices.back().ny = 0;
+		vertices.back().nz = -1;
+	}
+	
+	virtual void draw(const GLMatrix4 &parentTransform, const GLMatrix4 &parentNormTransform) {
+		const GLMatrix4 &t = parentTransform * transform,
+		&nt = parentNormTransform * normTransform;
+		bindVertexArray(&vertices[0]);
+		setTransform(t, nt);
+		
+		
+		glDrawArrays(GL_TRIANGLE_FAN, 0, vertices.size()/2);
+		glDrawArrays(GL_TRIANGLE_FAN, vertices.size()/2, vertices.size()/2);		
+		
+		drawChildren(t, nt);
 	}
 };
 
